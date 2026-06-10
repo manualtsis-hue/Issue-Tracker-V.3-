@@ -4,12 +4,12 @@ import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, onSnapshot }
 
 // ─── FIREBASE CONFIG ── ใส่ค่าจาก Firebase Console ────────────
 const firebaseConfig = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT.firebaseapp.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID",
+  apiKey:            "AIzaSyBQdqbzfL1iqBT89CQ-xFYFPyISmn EEwf4",
+  authDomain:        "issue-tracker-892cc.firebaseapp.com",
+  projectId:         "issue-tracker-892cc",
+  storageBucket:     "issue-tracker-892cc.firebasestorage.app",
+  messagingSenderId: "871168099532",
+  appId:             "1:871168099532:web:fbc364d3e7ff94a049ae69",
 };
 const fbApp = initializeApp(firebaseConfig);
 const db    = getFirestore(fbApp);
