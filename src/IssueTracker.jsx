@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 // ─── CONSTANTS ────────────────────────────────────────────────
 const MONTHS_EN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -339,9 +339,15 @@ function DashboardChart({issues}){
 
 // ─── MAIN APP ─────────────────────────────────────────────────
 export default function App(){
-  const [issues,  setIssues]  = useState(INIT_ISSUES);
-  const [members, setMembers] = useState(INIT_MEMBERS);
-  const [types,   setTypes]   = useState([...ALL_TYPES]);
+const [issues,  setIssues]  = useState(()=>{
+  try{ const s=localStorage.getItem("issues"); return s?JSON.parse(s):INIT_ISSUES; }catch{ return INIT_ISSUES; }
+});
+const [members, setMembers] = useState(()=>{
+  try{ const s=localStorage.getItem("members"); return s?JSON.parse(s):INIT_MEMBERS; }catch{ return INIT_MEMBERS; }
+});
+const [types,   setTypes]   = useState(()=>{
+  try{ const s=localStorage.getItem("types"); return s?JSON.parse(s):[...ALL_TYPES]; }catch{ return [...ALL_TYPES]; }
+});
   const [view,    setView]    = useState("dashboard");
   const [sel,     setSel]     = useState(null);
   const [showNotif,setShowNotif]=useState(false);
@@ -352,6 +358,11 @@ export default function App(){
     {id:2,text:"Issue #8 — เปลี่ยนสถานะ → รอตรวจสอบ",        level:"info",  read:false,ts:"08:41"},
   ]);
   const unread=notifs.filter(n=>!n.read).length;
+
+// เพิ่มบรรทัดนี้
+useEffect(()=>{ localStorage.setItem("issues",  JSON.stringify(issues));  },[issues]);
+useEffect(()=>{ localStorage.setItem("members", JSON.stringify(members)); },[members]);
+useEffect(()=>{ localStorage.setItem("types",   JSON.stringify(types));   },[types]);
 
   const upsert=upd=>{setIssues(p=>p.map(i=>i.id===upd.id?upd:i));if(sel?.id===upd.id)setSel(upd);};
   const removeIssue=id=>{setIssues(p=>p.filter(i=>i.id!==id));if(sel?.id===id){setSel(null);setView("list");}};
