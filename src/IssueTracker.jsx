@@ -179,25 +179,29 @@ function PlanGrid({planRows=[], onChange, readonly=false}){
   };
 
   const dateCellStyle={
-    padding:"4px 4px",border:`1px solid ${C.line}`,minWidth:90,
-    background:"#fff",verticalAlign:"middle"
+    padding:"3px 4px",border:`1px solid ${C.line}`,
+    background:"#fff",verticalAlign:"middle",overflow:"hidden"
   };
   const dateInputStyle={
-    width:"100%",border:"none",background:"transparent",fontSize:10,
-    color:C.textPrimary,fontFamily:"inherit",outline:"none",cursor:readonly?"default":"pointer"
+    width:"100%",border:"none",background:"transparent",fontSize:9,
+    color:C.textPrimary,fontFamily:"inherit",outline:"none",cursor:readonly?"default":"pointer",
+    padding:0,colorScheme:"light"
   };
 
+  const MONTH_W = 30; // px ต่อ 1 สัปดาห์
+  const TABLE_MIN_W = 160+90+90+48*MONTH_W+140+(readonly?0:32);
+
   return (
-    <div style={{overflowX:"auto"}}>
-      <table style={{borderCollapse:"collapse",fontSize:11,width:"100%",tableLayout:"fixed"}}>
+    <div style={{width:"100%",maxWidth:"100%",overflowX:"auto",overflowY:"hidden",WebkitOverflowScrolling:"touch"}}>
+      <table style={{borderCollapse:"collapse",fontSize:11,width:TABLE_MIN_W,minWidth:TABLE_MIN_W,tableLayout:"fixed"}}>
         <colgroup>
-          <col style={{minWidth:160}}/>
-          <col style={{width:88}}/>
-          <col style={{width:88}}/>
+          <col style={{width:160}}/>
+          <col style={{width:90}}/>
+          <col style={{width:90}}/>
           {MONTHS_EN.map((_,mi)=>[1,2,3,4].map(w=>(
-            <col key={`col-${mi}-${w}`}/>
+            <col key={`col-${mi}-${w}`} style={{width:MONTH_W}}/>
           )))}
-          <col style={{minWidth:140}}/>
+          <col style={{width:140}}/>
           {!readonly&&<col style={{width:32}}/>}
         </colgroup>
         <thead>
@@ -234,7 +238,7 @@ function PlanGrid({planRows=[], onChange, readonly=false}){
           {planRows.map((row,ri)=>(
             <tr key={row.id} style={{background:ri%2===0?"#fff":"#f8faff"}}>
               {/* Label cell */}
-              <td style={{padding:"4px 6px",border:`1px solid ${C.line}`,minWidth:160}}>
+              <td style={{padding:"4px 6px",border:`1px solid ${C.line}`,overflow:"hidden"}}>
                 {readonly?(
                   <span style={{fontSize:11,color:C.textPrimary,fontWeight:ri===0?600:400}}>{row.label}</span>
                 ):(
@@ -274,7 +278,7 @@ function PlanGrid({planRows=[], onChange, readonly=false}){
                 );
               }))}
               {/* Note */}
-              <td style={{padding:"4px 6px",border:`1px solid ${C.line}`,minWidth:140}}>
+              <td style={{padding:"4px 6px",border:`1px solid ${C.line}`,overflow:"hidden"}}>
                 {readonly?(
                   <span style={{fontSize:10,color:C.textSec}}>{row.note||"—"}</span>
                 ):(
@@ -986,7 +990,7 @@ function Detail({issue,members,onUpdate,onDelete,onBack,callAI}){
           {/* Plan Grid */}
           <Panel>
             <SHdr label={`PLAN ${CUR_YEAR}`} sub="คลิกช่องเพื่อวางแผน · แก้ไขรายละเอียดได้โดยตรง · + เพิ่มรายละเอียดแถวใหม่"/>
-            <div style={{padding:14,overflowX:"auto"}}>
+            <div style={{padding:14,maxWidth:"100%",overflow:"hidden"}}>
               <PlanGrid
                 planRows={issue.planRows||[]}
                 onChange={rows=>onUpdate({...issue,planRows:rows})}
@@ -1144,7 +1148,7 @@ function NewIssueModal({onClose,onSave,types,setTypes,members,setMembers}){
         </div>
 
         <div style={{overflow:"auto",flex:1}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}}>
+          <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)",gap:0}}>
             {/* Left column */}
             <div style={{padding:20,borderRight:`1px solid ${C.line}`,display:"flex",flexDirection:"column",gap:14}}>
               <div>
@@ -1226,12 +1230,12 @@ function NewIssueModal({onClose,onSave,types,setTypes,members,setMembers}){
             </div>
 
             {/* Right column — Plan Grid */}
-            <div style={{padding:20,display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{padding:20,display:"flex",flexDirection:"column",gap:10,minWidth:0,maxWidth:"100%"}}>
               <div>
                 <div style={{fontSize:12,fontWeight:700,color:C.textSec,marginBottom:4}}>📅 แผนงาน {CUR_YEAR}</div>
                 <div style={{fontSize:11,color:C.textMuted,marginBottom:10}}>เพิ่มรายละเอียดได้หลายแถว · คลิกช่องสีน้ำเงิน = วางแผน · คลิกอีกครั้ง = ยกเลิก</div>
               </div>
-              <div style={{border:`1px solid ${C.line}`,borderRadius:8,overflow:"hidden",background:"#fff",padding:12}}>
+              <div style={{border:`1px solid ${C.line}`,borderRadius:8,background:"#fff",padding:12,maxWidth:"100%",minWidth:0}}>
                 <PlanGrid
                   planRows={f.planRows}
                   onChange={rows=>set("planRows",rows)}
