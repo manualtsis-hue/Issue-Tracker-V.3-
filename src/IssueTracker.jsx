@@ -40,11 +40,14 @@ const dLeft= s => s ? Math.ceil((new Date(s)-new Date())/864e5) : null;
 
 // ─── INITIAL DATA ─────────────────────────────────────────────
 const INIT_MEMBERS = [
-  {id:1,name:"สมชาย ใจดี",  role:"Engineer",   abbr:"สช",skills:["Mechanical","Electrical"]},
-  {id:2,name:"วิภา รักงาน", role:"Technician", abbr:"วภ",skills:["Quality","Process"]},
-  {id:3,name:"ธนา สุขใจ",   role:"Supervisor", abbr:"ธน",skills:["Management","Process"]},
-  {id:4,name:"นภา ชัยดี",   role:"Engineer",   abbr:"นภ",skills:["Electrical","PLC"]},
-  {id:5,name:"อรุณ มานะ",   role:"Technician", abbr:"อร",skills:["Mechanical","Welding"]},
+  {id:1,name:"นายวีระชัย จันทะสอน",  role:"Engineer",   abbr:"ว",skills:["Mechanical","Electrical"]},
+  {id:2,name:"วิชุนี เกื้อทิพย์", role:"Technician", abbr:"ว",skills:["Quality","Process"]},
+  {id:3,name:"จรัญ มุ่งดี",   role:"Supervisor", abbr:"จ",skills:["Management","Process"]},
+  {id:4,name:"พิสิทธิ์ แหล่งหล้า",   role:"Engineer",   abbr:"พ",skills:["Electrical","PLC"]},
+  {id:5,name:"มัฌชิมา เหล็กเพชร",   role:"Technician", abbr:"ม",skills:["Mechanical","Welding"]},
+  {id:2,name:"ชาญวิทย์ เพชรศรีจันทร์", role:"Technician", abbr:"ช",skills:["Quality","Process"]},
+  {id:3,name:"นัตพล อุโมง",   role:"Supervisor", abbr:"น",skills:["Management","Process"]},
+  {id:4,name:"รัชชัย  จันทร์ครบ",   role:"Engineer",   abbr:"ร",skills:["Electrical","PLC"]},
 ];
 
 // plan rows: [{id, label, cells:{key:true}}]
