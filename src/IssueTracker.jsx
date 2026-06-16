@@ -1,27 +1,4 @@
-import { useState, useRef, useEffect } from "react";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-// ─── FIREBASE CONFIG ── ใส่ค่าจาก Firebase Console ────────────
-const firebaseConfig = {
-  apiKey:            "AIzaSyBQdqbzfL1iqBT89CQ-xFYFPyISmn EEwf4",
-  authDomain:        "issue-tracker-892cc.firebaseapp.com",
-  projectId:         "issue-tracker-892cc",
-  storageBucket:     "issue-tracker-892cc.firebasestorage.app",
-  messagingSenderId: "871168099532",
-  appId:             "1:871168099532:web:fbc364d3e7ff94a049ae69",
-};
-const fbApp = initializeApp(firebaseConfig);
-const db    = getFirestore(fbApp);
-
-// ── helpers ──────────────────────────────────────────────────────
-const colRef  = name => collection(db, name);
-const saveDoc = (col, id, data) => setDoc(doc(db, col, String(id)), data);
-const delDoc  = (col, id)       => deleteDoc(doc(db, col, String(id)));
-const seedCol = async (col, rows) => {
-  const snap = await getDocs(colRef(col));
-  if(snap.empty) rows.forEach(r => saveDoc(col, r.id, r));
-};
+import { useState, useRef } from "react";
 
 // ─── CONSTANTS ────────────────────────────────────────────────
 const MONTHS_EN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -156,7 +133,7 @@ const Btn=({children,variant="primary",style={},...p})=>{
 
 // ─── PLAN GRID COMPONENT ─────────────────────────────────────
 // planRows = [{id, label, cells:{key:true}}]
-// Multi-row Gantt: each row has a label + clickable week cells
+// Multi-row Gantt: each row has a label + start + target + clickable week cells
 function PlanGrid({planRows=[], onChange, readonly=false}){
   const weeks=[1,2,3,4];
 
@@ -172,7 +149,7 @@ function PlanGrid({planRows=[], onChange, readonly=false}){
 
   const addRow=()=>{
     if(readonly||!onChange) return;
-    const newRow={id:Date.now(),label:"รายละเอียดใหม่",cells:{}};
+    const newRow={id:Date.now(),label:"รายละเอียดใหม่",start:"",target:"",note:"",cells:{}};
     onChange([...planRows,newRow]);
   };
 
@@ -186,42 +163,102 @@ function PlanGrid({planRows=[], onChange, readonly=false}){
     onChange(planRows.map(r=>r.id===rowId?{...r,label:val}:r));
   };
 
+  const updateStart=(rowId,val)=>{
+    if(readonly||!onChange) return;
+    onChange(planRows.map(r=>r.id===rowId?{...r,start:val}:r));
+  };
+
+  const updateTarget=(rowId,val)=>{
+    if(readonly||!onChange) return;
+    onChange(planRows.map(r=>r.id===rowId?{...r,target:val}:r));
+  };
+
+  const updateNote=(rowId,val)=>{
+    if(readonly||!onChange) return;
+    onChange(planRows.map(r=>r.id===rowId?{...r,note:val}:r));
+  };
+
+  const dateCellStyle={
+    padding:"4px 4px",border:`1px solid ${C.line}`,minWidth:90,
+    background:"#fff",verticalAlign:"middle"
+  };
+  const dateInputStyle={
+    width:"100%",border:"none",background:"transparent",fontSize:10,
+    color:C.textPrimary,fontFamily:"inherit",outline:"none",cursor:readonly?"default":"pointer"
+  };
+
   return (
     <div style={{overflowX:"auto"}}>
-      <table style={{borderCollapse:"collapse",fontSize:11,minWidth:900,width:"100%"}}>
+      <table style={{borderCollapse:"collapse",fontSize:11,width:"100%",tableLayout:"fixed"}}>
+        <colgroup>
+          <col style={{minWidth:160}}/>
+          <col style={{width:88}}/>
+          <col style={{width:88}}/>
+          {MONTHS_EN.map((_,mi)=>[1,2,3,4].map(w=>(
+            <col key={`col-${mi}-${w}`}/>
+          )))}
+          <col style={{minWidth:140}}/>
+          {!readonly&&<col style={{width:32}}/>}
+        </colgroup>
         <thead>
-          {/* Year */}
+          {/* Year + group header for date columns */}
           <tr>
-            <th style={{minWidth:180,padding:"5px 10px",background:C.line2,border:`1px solid ${C.line}`,textAlign:"left",fontSize:11,fontWeight:700,color:C.textSec}} rowSpan={2}>รายละเอียด</th>
+            <th style={{padding:"5px 10px",background:C.line2,border:`1px solid ${C.line}`,textAlign:"left",fontSize:11,fontWeight:700,color:C.textSec}} rowSpan={4}>รายละเอียด</th>
+            <th colSpan={2} style={{padding:"3px",background:C.line2,border:`1px solid ${C.line}`,textAlign:"center",fontSize:10,fontWeight:700,color:C.textSec}}>รายละเอียดวันที่</th>
             <th colSpan={48} style={{padding:"4px",background:C.accent,color:"#fff",border:`1px solid ${C.line}`,textAlign:"center",fontSize:11,fontWeight:800}}>{CUR_YEAR}</th>
-            {!readonly&&<th rowSpan={2} style={{width:32,background:C.line2,border:`1px solid ${C.line}`}}></th>}
+            <th rowSpan={4} style={{padding:"5px 8px",background:C.line2,border:`1px solid ${C.line}`,textAlign:"center",fontSize:10,fontWeight:700,color:C.textSec}}>หมายเหตุ</th>
+            {!readonly&&<th rowSpan={4} style={{width:32,background:C.line2,border:`1px solid ${C.line}`}}></th>}
+          </tr>
+          {/* Start / Target labels */}
+          <tr>
+            <th style={{padding:"4px 6px",background:C.line2,border:`1px solid ${C.line}`,textAlign:"center",fontSize:9,fontWeight:700,color:C.textSec}}>วันที่เริ่ม</th>
+            <th style={{padding:"4px 6px",background:C.line2,border:`1px solid ${C.line}`,textAlign:"center",fontSize:9,fontWeight:700,color:C.textSec}}>วันที่สิ้นสุด</th>
+            <th colSpan={48} style={{padding:0,border:`1px solid ${C.line}`,background:C.line2}}></th>
           </tr>
           {/* Months */}
           <tr>
+            <th colSpan={2} style={{background:C.line2,border:`1px solid ${C.line}`}}></th>
             {MONTHS_EN.map((mo,mi)=>(
-              <th key={mi} colSpan={4} style={{padding:"3px 2px",background:C.line2,border:`1px solid ${C.line}`,textAlign:"center",fontSize:10,fontWeight:700,color:C.textSec,minWidth:56}}>{mo}</th>
+              <th key={mi} colSpan={4} style={{padding:"3px 2px",background:C.line2,border:`1px solid ${C.line}`,textAlign:"center",fontSize:10,fontWeight:700,color:C.textSec,overflow:"hidden"}}>{mo}</th>
             ))}
           </tr>
           {/* W1-W4 */}
           <tr>
-            <th style={{padding:"3px 8px",background:"#f1f5f9",border:`1px solid ${C.line}`,fontSize:9,color:C.textMuted}}></th>
+            <th colSpan={2} style={{background:"#f1f5f9",border:`1px solid ${C.line}`}}></th>
             {MONTHS_EN.map((_,mi)=>[1,2,3,4].map(w=>(
-              <th key={`${mi}-${w}`} style={{padding:"2px 0",background:"#f1f5f9",border:`1px solid ${C.line}`,textAlign:"center",fontSize:8,color:C.textMuted,fontWeight:600,width:14}}>W{w}</th>
+              <th key={`${mi}-${w}`} style={{padding:"2px 0",background:"#f1f5f9",border:`1px solid ${C.line}`,textAlign:"center",fontSize:8,color:C.textMuted,fontWeight:600,overflow:"hidden"}}>W{w}</th>
             )))}
-            {!readonly&&<th style={{background:"#f1f5f9",border:`1px solid ${C.line}`}}></th>}
           </tr>
         </thead>
         <tbody>
           {planRows.map((row,ri)=>(
             <tr key={row.id} style={{background:ri%2===0?"#fff":"#f8faff"}}>
               {/* Label cell */}
-              <td style={{padding:"4px 6px",border:`1px solid ${C.line}`,minWidth:180}}>
+              <td style={{padding:"4px 6px",border:`1px solid ${C.line}`,minWidth:160}}>
                 {readonly?(
                   <span style={{fontSize:11,color:C.textPrimary,fontWeight:ri===0?600:400}}>{row.label}</span>
                 ):(
                   <input value={row.label} onChange={e=>updateLabel(row.id,e.target.value)}
                     style={{width:"100%",border:"none",background:"transparent",fontSize:11,color:C.textPrimary,fontFamily:"inherit",outline:"none",fontWeight:ri===0?600:400}}
                     placeholder="ระบุรายละเอียด..."/>
+                )}
+              </td>
+              {/* Start date */}
+              <td style={dateCellStyle}>
+                {readonly?(
+                  <span style={{fontSize:10,color:C.textPrimary}}>{row.start||"—"}</span>
+                ):(
+                  <input type="date" value={row.start||""} onChange={e=>updateStart(row.id,e.target.value)}
+                    style={dateInputStyle} title="วันที่เริ่ม"/>
+                )}
+              </td>
+              {/* Target date */}
+              <td style={dateCellStyle}>
+                {readonly?(
+                  <span style={{fontSize:10,color:row.target&&new Date(row.target)<new Date()?C.red:C.textPrimary}}>{row.target||"—"}</span>
+                ):(
+                  <input type="date" value={row.target||""} onChange={e=>updateTarget(row.id,e.target.value)}
+                    style={{...dateInputStyle,color:row.target&&new Date(row.target)<new Date()?C.red:"inherit"}} title="วันที่กำหนดเสร็จ"/>
                 )}
               </td>
               {/* Week cells */}
@@ -231,11 +268,21 @@ function PlanGrid({planRows=[], onChange, readonly=false}){
                 return (
                   <td key={key}
                     onClick={()=>toggleCell(row.id,key)}
-                    style={{border:`1px solid ${C.line}`,background:active?"#1a56db":"#fff",width:14,height:22,padding:0,cursor:readonly?"default":"pointer",transition:"background .1s"}}
+                    style={{border:`1px solid ${C.line}`,background:active?"#1a56db":"#fff",height:22,padding:0,cursor:readonly?"default":"pointer",transition:"background .1s"}}
                     title={`${MONTHS_EN[mi]} W${w}`}
                   />
                 );
               }))}
+              {/* Note */}
+              <td style={{padding:"4px 6px",border:`1px solid ${C.line}`,minWidth:140}}>
+                {readonly?(
+                  <span style={{fontSize:10,color:C.textSec}}>{row.note||"—"}</span>
+                ):(
+                  <input value={row.note||""} onChange={e=>updateNote(row.id,e.target.value)}
+                    style={{width:"100%",border:"none",background:"transparent",fontSize:10,color:C.textSec,fontFamily:"inherit",outline:"none"}}
+                    placeholder="หมายเหตุ..."/>
+                )}
+              </td>
               {/* Delete row btn */}
               {!readonly&&(
                 <td style={{border:`1px solid ${C.line}`,textAlign:"center",padding:"2px 4px",background:"#fff"}}>
@@ -248,7 +295,7 @@ function PlanGrid({planRows=[], onChange, readonly=false}){
           ))}
           {planRows.length===0&&(
             <tr>
-              <td colSpan={50} style={{padding:16,textAlign:"center",color:C.textMuted,fontSize:11,border:`1px solid ${C.line}`,fontStyle:"italic"}}>
+              <td colSpan={53} style={{padding:16,textAlign:"center",color:C.textMuted,fontSize:11,border:`1px solid ${C.line}`,fontStyle:"italic"}}>
                 ยังไม่มีรายละเอียด — กดปุ่ม "+ เพิ่มรายละเอียด" ด้านล่าง
               </td>
             </tr>
@@ -365,10 +412,9 @@ function DashboardChart({issues}){
 
 // ─── MAIN APP ─────────────────────────────────────────────────
 export default function App(){
-  const [issues,  setIssues]  = useState([]);
-  const [members, setMembers] = useState([]);
-  const [types,   setTypes]   = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [issues,  setIssues]  = useState(INIT_ISSUES);
+  const [members, setMembers] = useState(INIT_MEMBERS);
+  const [types,   setTypes]   = useState([...ALL_TYPES]);
   const [view,    setView]    = useState("dashboard");
   const [sel,     setSel]     = useState(null);
   const [showNotif,setShowNotif]=useState(false);
@@ -380,36 +426,9 @@ export default function App(){
   ]);
   const unread=notifs.filter(n=>!n.read).length;
 
-  // ── Firebase: seed ข้อมูลตั้งต้น + realtime listener ──────────
-  useEffect(()=>{
-    const init = async () => {
-      await seedCol("issues",  INIT_ISSUES);
-      await seedCol("members", INIT_MEMBERS);
-      const tSnap = await getDocs(colRef("types"));
-      if(tSnap.empty) await setDoc(doc(db,"types","list"),{values:[...ALL_TYPES]});
-    };
-    init();
-
-    const unsubIssues  = onSnapshot(colRef("issues"),  s=>{ setIssues(s.docs.map(d=>d.data()).sort((a,b)=>a.id-b.id)); setLoading(false); });
-    const unsubMembers = onSnapshot(colRef("members"), s=>{ setMembers(s.docs.map(d=>d.data()).sort((a,b)=>a.id-b.id)); });
-    const unsubTypes   = onSnapshot(doc(db,"types","list"), s=>{ if(s.exists()) setTypes(s.data().values); });
-
-    return ()=>{ unsubIssues(); unsubMembers(); unsubTypes(); };
-  },[]);
-
-  const upsert=async upd=>{
-    await saveDoc("issues", upd.id, upd);
-    if(sel?.id===upd.id) setSel(upd);
-  };
-  const removeIssue=async id=>{
-    await delDoc("issues", id);
-    if(sel?.id===id){setSel(null);setView("list");}
-  };
-  const addIssue=async iss=>{
-    const newIss={...iss, id:Date.now(), acts:[], pct:0};
-    await saveDoc("issues", newIss.id, newIss);
-    setShowNew(false);
-  };
+  const upsert=upd=>{setIssues(p=>p.map(i=>i.id===upd.id?upd:i));if(sel?.id===upd.id)setSel(upd);};
+  const removeIssue=id=>{setIssues(p=>p.filter(i=>i.id!==id));if(sel?.id===id){setSel(null);setView("list");}};
+  const addIssue=iss=>{setIssues(p=>[{...iss,id:Date.now(),acts:[],pct:0},...p]);setShowNew(false);};
   const openDetail=iss=>{setSel(iss);setView("detail");};
 
   // AI
@@ -430,16 +449,6 @@ export default function App(){
   };
 
   const NAV=[{id:"dashboard",label:"DASHBOARD",ico:"▦"},{id:"list",label:"ISSUE LIST",ico:"≡"},{id:"kanban",label:"KANBAN",ico:"⊞"},{id:"gantt",label:"GANTT",ico:"▤"}];
-
-  if(loading) return (
-    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Sans Thai','Sarabun',sans-serif"}}>
-      <div style={{textAlign:"center"}}>
-        <div style={{width:48,height:48,border:`4px solid ${C.line}`,borderTop:`4px solid ${C.accent}`,borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 16px"}}/>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-        <div style={{color:C.textSec,fontSize:14,fontWeight:500}}>กำลังโหลดข้อมูล...</div>
-      </div>
-    </div>
-  );
 
   return (
     <div style={{minHeight:"100vh",background:C.bg,color:C.textPrimary,fontFamily:"'IBM Plex Sans Thai','Sarabun','Noto Sans Thai',sans-serif"}}>
@@ -842,41 +851,48 @@ function Kanban({issues,members,onUpdate,onView}){
 
 // ─── GANTT VIEW ───────────────────────────────────────────────
 function GanttView({issues,members}){
+  // คำนวณ cell width ให้ Jan-Dec balance เต็มหน้าจอ
+  // 12 เดือน × 4 สัปดาห์ = 48 cells, title col = 200px
+  const CELL_W = `calc((100% - 200px) / 48)`;
   return (
     <Panel>
       <SHdr label={`GANTT CHART — ${CUR_YEAR}`} right={<span style={{fontSize:10,color:C.textMuted}}>วันนี้: {new Date().toLocaleDateString("th-TH")}</span>}/>
       <div style={{overflowX:"auto"}}>
-        <table style={{borderCollapse:"collapse",fontSize:11,minWidth:1000}}>
+        <table style={{borderCollapse:"collapse",fontSize:11,width:"100%",tableLayout:"fixed"}}>
+          <colgroup>
+            <col style={{width:200}}/>
+            {MONTHS_EN.map((_,mi)=>[1,2,3,4].map(w=>(
+              <col key={`col-${mi}-${w}`} style={{width:CELL_W}}/>
+            )))}
+          </colgroup>
           <thead>
             <tr>
-              <th style={{width:200,padding:"6px 12px",background:C.line2,border:`1px solid ${C.line}`,textAlign:"left",fontSize:11,fontWeight:700,color:C.textSec}} rowSpan={2}>Issue</th>
+              <th style={{width:200,padding:"6px 12px",background:C.line2,border:`1px solid ${C.line}`,textAlign:"left",fontSize:11,fontWeight:700,color:C.textSec}} rowSpan={3}>Issue</th>
               <th colSpan={48} style={{padding:"5px",background:C.accent,color:"#fff",border:`1px solid ${C.line}`,textAlign:"center",fontSize:11,fontWeight:700}}>{CUR_YEAR}</th>
             </tr>
             <tr>
               {MONTHS_EN.map((mo,mi)=>(
-                <th key={mi} colSpan={4} style={{padding:"4px 2px",background:C.line2,border:`1px solid ${C.line}`,textAlign:"center",fontSize:10,fontWeight:700,color:C.textSec}}>{mo}</th>
+                <th key={mi} colSpan={4} style={{padding:"4px 2px",background:C.line2,border:`1px solid ${C.line}`,textAlign:"center",fontSize:10,fontWeight:700,color:C.textSec,overflow:"hidden"}}>{mo}</th>
               ))}
             </tr>
             <tr>
-              <th style={{padding:"3px 8px",background:"#f1f5f9",border:`1px solid ${C.line}`,fontSize:9,color:C.textMuted}}></th>
               {MONTHS_EN.map((_,mi)=>[1,2,3,4].map(w=>(
-                <th key={`${mi}-${w}`} style={{padding:"3px 1px",background:"#f1f5f9",border:`1px solid ${C.line}`,textAlign:"center",fontSize:8,color:C.textMuted,width:14}}>W{w}</th>
+                <th key={`${mi}-${w}`} style={{padding:"2px 0",background:"#f1f5f9",border:`1px solid ${C.line}`,textAlign:"center",fontSize:8,color:C.textMuted,fontWeight:600,overflow:"hidden"}}>W{w}</th>
               )))}
             </tr>
           </thead>
           <tbody>
             {issues.map((i,idx)=>{
               const m=members.find(x=>x.id===i.asgn);
-              // merge all plan rows cells
               const allCells={};
               (i.planRows||[]).forEach(r=>Object.assign(allCells,r.cells||{}));
               return (
                 <tr key={i.id} style={{background:idx%2===0?"#fff":"#f8faff",borderBottom:`1px solid ${C.line2}`}}>
-                  <td style={{padding:"7px 12px",border:`1px solid ${C.line}`}}>
+                  <td style={{padding:"7px 12px",border:`1px solid ${C.line}`,overflow:"hidden"}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <Avt m={m} size={20}/>
-                      <div style={{minWidth:0}}>
-                        <div style={{fontSize:11,fontWeight:600,color:C.textPrimary,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:150}}>{i.title}</div>
+                      <div style={{minWidth:0,flex:1,overflow:"hidden"}}>
+                        <div style={{fontSize:11,fontWeight:600,color:C.textPrimary,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{i.title}</div>
                         <StatusChip status={i.status} sm/>
                       </div>
                     </div>
@@ -884,7 +900,7 @@ function GanttView({issues,members}){
                   {MONTHS_EN.map((_,mi)=>[1,2,3,4].map(w=>{
                     const key=planKey(mi,w);
                     const active=!!allCells[key];
-                    return <td key={key} style={{border:`1px solid ${C.line}`,background:active?"#1a56db":"#fff",width:14,height:22,padding:0}}/>;
+                    return <td key={key} style={{border:`1px solid ${C.line}`,background:active?"#1a56db":"#fff",height:28,padding:0}}/>;
                   }))}
                 </tr>
               );
@@ -1110,16 +1126,11 @@ function NewIssueModal({onClose,onSave,types,setTypes,members,setMembers}){
     if(!newM.name.trim()) return;
     const abbr=newM.abbr.trim()||newM.name.trim().slice(0,2);
     const nm={id:Date.now(),name:newM.name.trim(),role:newM.role.trim()||"Staff",abbr,skills:[]};
-    saveDoc("members", nm.id, nm);
-    set("asgn",nm.id);setNewM({name:"",role:"",abbr:""});setShowAddMember(false);
+    setMembers(p=>[...p,nm]);set("asgn",nm.id);setNewM({name:"",role:"",abbr:""});setShowAddMember(false);
   };
   const addType=()=>{
     const n=prompt("ชื่อประเภทใหม่:");
-    if(n&&n.trim()&&!types.includes(n.trim())){
-      const updated=[...types,n.trim()];
-      setDoc(doc(db,"types","list"),{values:updated});
-      set("type",n.trim());
-    }
+    if(n&&n.trim()&&!types.includes(n.trim())){setTypes(p=>[...p,n.trim()]);set("type",n.trim());}
   };
 
   return (
