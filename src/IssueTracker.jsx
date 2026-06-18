@@ -1,4 +1,27 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ─── FIREBASE CONFIG ── ใส่ค่าจาก Firebase Console ────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyBQdqbzfL1iqBT89CQ-xFYFPyISmnEEwf4",
+  authDomain:        "issue-tracker-892cc.firebaseapp.com",
+  projectId:         "issue-tracker-892cc",
+  storageBucket:     "issue-tracker-892cc.firebasestorage.app",
+  messagingSenderId: "871168099532",
+  appId:             "1:871168099532:web:fbc364d3e7ff94a049ae69",
+};
+const fbApp = initializeApp(firebaseConfig);
+const db    = getFirestore(fbApp);
+
+// ── helpers ──────────────────────────────────────────────────────
+const colRef  = name => collection(db, name);
+const saveDoc = (col, id, data) => setDoc(doc(db, col, String(id)), data);
+const delDoc  = (col, id)       => deleteDoc(doc(db, col, String(id)));
+const seedCol = async (col, rows) => {
+  const snap = await getDocs(colRef(col));
+  if(snap.empty) rows.forEach(r => saveDoc(col, r.id, r));
+};
 
 // ─── CONSTANTS ────────────────────────────────────────────────
 const MONTHS_EN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -416,9 +439,10 @@ function DashboardChart({issues}){
 
 // ─── MAIN APP ─────────────────────────────────────────────────
 export default function App(){
-  const [issues,  setIssues]  = useState(INIT_ISSUES);
-  const [members, setMembers] = useState(INIT_MEMBERS);
-  const [types,   setTypes]   = useState([...ALL_TYPES]);
+  const [issues,  setIssues]  = useState([]);
+  const [members, setMembers] = useState([]);
+  const [types,   setTypes]   = useState([]);
+  const [loading, setLoading] = useState(true);
   const [view,    setView]    = useState("dashboard");
   const [sel,     setSel]     = useState(null);
   const [showNotif,setShowNotif]=useState(false);
@@ -430,9 +454,36 @@ export default function App(){
   ]);
   const unread=notifs.filter(n=>!n.read).length;
 
-  const upsert=upd=>{setIssues(p=>p.map(i=>i.id===upd.id?upd:i));if(sel?.id===upd.id)setSel(upd);};
-  const removeIssue=id=>{setIssues(p=>p.filter(i=>i.id!==id));if(sel?.id===id){setSel(null);setView("list");}};
-  const addIssue=iss=>{setIssues(p=>[{...iss,id:Date.now(),acts:[],pct:0},...p]);setShowNew(false);};
+  // ── Firebase: seed ข้อมูลตั้งต้น + realtime listener ──────────
+  useEffect(()=>{
+    const init = async () => {
+      await seedCol("issues",  INIT_ISSUES);
+      await seedCol("members", INIT_MEMBERS);
+      const tSnap = await getDocs(colRef("types"));
+      if(tSnap.empty) await setDoc(doc(db,"types","list"),{values:[...ALL_TYPES]});
+    };
+    init();
+
+    const unsubIssues  = onSnapshot(colRef("issues"),  s=>{ setIssues(s.docs.map(d=>d.data()).sort((a,b)=>a.id-b.id)); setLoading(false); });
+    const unsubMembers = onSnapshot(colRef("members"), s=>{ setMembers(s.docs.map(d=>d.data()).sort((a,b)=>a.id-b.id)); });
+    const unsubTypes   = onSnapshot(doc(db,"types","list"), s=>{ if(s.exists()) setTypes(s.data().values); });
+
+    return ()=>{ unsubIssues(); unsubMembers(); unsubTypes(); };
+  },[]);
+
+  const upsert=async upd=>{
+    await saveDoc("issues", upd.id, upd);
+    if(sel?.id===upd.id) setSel(upd);
+  };
+  const removeIssue=async id=>{
+    await delDoc("issues", id);
+    if(sel?.id===id){setSel(null);setView("list");}
+  };
+  const addIssue=async iss=>{
+    const newIss={...iss, id:Date.now(), acts:[], pct:0};
+    await saveDoc("issues", newIss.id, newIss);
+    setShowNew(false);
+  };
   const openDetail=iss=>{setSel(iss);setView("detail");};
 
   // AI
@@ -453,6 +504,16 @@ export default function App(){
   };
 
   const NAV=[{id:"dashboard",label:"DASHBOARD",ico:"▦"},{id:"list",label:"ISSUE LIST",ico:"≡"},{id:"kanban",label:"KANBAN",ico:"⊞"},{id:"gantt",label:"GANTT",ico:"▤"}];
+
+  if(loading) return (
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'IBM Plex Sans Thai','Sarabun',sans-serif"}}>
+      <div style={{textAlign:"center"}}>
+        <div style={{width:48,height:48,border:`4px solid ${C.line}`,borderTop:`4px solid ${C.accent}`,borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 16px"}}/>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <div style={{color:C.textSec,fontSize:14,fontWeight:500}}>กำลังโหลดข้อมูล...</div>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{minHeight:"100vh",background:C.bg,color:C.textPrimary,fontFamily:"'IBM Plex Sans Thai','Sarabun','Noto Sans Thai',sans-serif"}}>
@@ -508,12 +569,14 @@ export default function App(){
 
       {/* ── CONTENT ── */}
       <div className="grid-bg" style={{padding:20,minHeight:"calc(100vh - 52px)"}}>
+        <div style={{maxWidth:1480,margin:"0 auto"}}>
         <div className="fade" key={view}>
           {view==="dashboard"&&<Dashboard issues={issues} members={members} onView={openDetail} onViewAll={()=>setView("list")}/>}
           {view==="list"     &&<IssueList issues={issues} members={members} types={types} onView={openDetail} onUpdate={upsert} onDelete={removeIssue}/>}
           {view==="kanban"   &&<Kanban    issues={issues} members={members} onUpdate={upsert} onView={openDetail}/>}
           {view==="gantt"    &&<GanttView issues={issues} members={members}/>}
           {view==="detail"   &&sel&&<Detail issue={sel} members={members} onUpdate={upsert} onDelete={removeIssue} onBack={()=>setView("list")} callAI={callAI}/>}
+        </div>
         </div>
       </div>
 
@@ -941,7 +1004,7 @@ function Detail({issue,members,onUpdate,onDelete,onBack,callAI}){
   };
 
   return (
-    <div style={{maxWidth:1100}}>
+    <div style={{width:"100%"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
         <button onClick={onBack} style={{background:"none",border:`1px solid ${C.line}`,color:C.textSec,padding:"6px 14px",fontSize:11,fontFamily:"monospace",cursor:"pointer",borderRadius:6}}>← กลับ</button>
         <Btn variant="danger" onClick={()=>setConfirmDel(true)} style={{fontSize:11}}>🗑 ลบ Issue</Btn>
@@ -1130,11 +1193,16 @@ function NewIssueModal({onClose,onSave,types,setTypes,members,setMembers}){
     if(!newM.name.trim()) return;
     const abbr=newM.abbr.trim()||newM.name.trim().slice(0,2);
     const nm={id:Date.now(),name:newM.name.trim(),role:newM.role.trim()||"Staff",abbr,skills:[]};
-    setMembers(p=>[...p,nm]);set("asgn",nm.id);setNewM({name:"",role:"",abbr:""});setShowAddMember(false);
+    saveDoc("members", nm.id, nm);
+    set("asgn",nm.id);setNewM({name:"",role:"",abbr:""});setShowAddMember(false);
   };
   const addType=()=>{
     const n=prompt("ชื่อประเภทใหม่:");
-    if(n&&n.trim()&&!types.includes(n.trim())){setTypes(p=>[...p,n.trim()]);set("type",n.trim());}
+    if(n&&n.trim()&&!types.includes(n.trim())){
+      const updated=[...types,n.trim()];
+      setDoc(doc(db,"types","list"),{values:updated});
+      set("type",n.trim());
+    }
   };
 
   return (
