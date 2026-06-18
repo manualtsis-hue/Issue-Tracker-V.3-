@@ -533,6 +533,9 @@ export default function App(){
         @keyframes spin{to{transform:rotate(360deg)}}
         .grid-bg{background-image:linear-gradient(rgba(26,86,219,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(26,86,219,.03) 1px,transparent 1px);background-size:32px 32px;}
         input:focus,select:focus,textarea:focus{outline:none;border-color:${C.accentBright}!important;box-shadow:0 0 0 3px rgba(37,99,235,.1);}
+        @media (max-width:880px){
+          .detail-grid{grid-template-columns:1fr!important;}
+        }
       `}</style>
 
       {/* ── TOP BAR ── */}
@@ -1010,9 +1013,9 @@ function Detail({issue,members,onUpdate,onDelete,onBack,callAI}){
         <Btn variant="danger" onClick={()=>setConfirmDel(true)} style={{fontSize:11}}>🗑 ลบ Issue</Btn>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1fr 290px",gap:16}}>
+      <div className="detail-grid" style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 290px",gap:16}}>
         {/* Left */}
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{display:"flex",flexDirection:"column",gap:12,minWidth:0}}>
 
           {/* Header */}
           <Panel>
@@ -1051,7 +1054,7 @@ function Detail({issue,members,onUpdate,onDelete,onBack,callAI}){
           </Panel>
 
           {/* Plan Grid */}
-          <Panel>
+          <Panel style={{minWidth:0,maxWidth:"100%"}}>
             <SHdr label={`PLAN ${CUR_YEAR}`} sub="คลิกช่องเพื่อวางแผน · แก้ไขรายละเอียดได้โดยตรง · + เพิ่มรายละเอียดแถวใหม่"/>
             <div style={{padding:14,maxWidth:"100%",overflow:"hidden"}}>
               <PlanGrid
@@ -1100,7 +1103,7 @@ function Detail({issue,members,onUpdate,onDelete,onBack,callAI}){
         </div>
 
         {/* Right sidebar */}
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div style={{display:"flex",flexDirection:"column",gap:12,minWidth:0}}>
           <Panel>
             <SHdr label="ISSUE INFO"/>
             <div style={{padding:12}}>
