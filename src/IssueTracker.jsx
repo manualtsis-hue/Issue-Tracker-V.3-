@@ -40,14 +40,11 @@ const dLeft= s => s ? Math.ceil((new Date(s)-new Date())/864e5) : null;
 
 // ─── INITIAL DATA ─────────────────────────────────────────────
 const INIT_MEMBERS = [
-  {id:1,name:"นายวีระชัย จันทะสอน",  role:"Engineer",   abbr:"ว",skills:["Mechanical","Electrical"]},
-  {id:2,name:"วิชุนี เกื้อทิพย์", role:"Technician", abbr:"ว",skills:["Quality","Process"]},
-  {id:3,name:"จรัญ มุ่งดี",   role:"Supervisor", abbr:"จ",skills:["Management","Process"]},
-  {id:4,name:"พิสิทธิ์ แหล่งหล้า",   role:"Engineer",   abbr:"พ",skills:["Electrical","PLC"]},
-  {id:5,name:"มัฌชิมา เหล็กเพชร",   role:"Technician", abbr:"ม",skills:["Mechanical","Welding"]},
-  {id:2,name:"ชาญวิทย์ เพชรศรีจันทร์", role:"Technician", abbr:"ช",skills:["Quality","Process"]},
-  {id:3,name:"นัตพล อุโมง",   role:"Supervisor", abbr:"น",skills:["Management","Process"]},
-  {id:4,name:"รัชชัย  จันทร์ครบ",   role:"Engineer",   abbr:"ร",skills:["Electrical","PLC"]},
+  {id:1,name:"สมชาย ใจดี",  role:"Engineer",   abbr:"สช",skills:["Mechanical","Electrical"]},
+  {id:2,name:"วิภา รักงาน", role:"Technician", abbr:"วภ",skills:["Quality","Process"]},
+  {id:3,name:"ธนา สุขใจ",   role:"Supervisor", abbr:"ธน",skills:["Management","Process"]},
+  {id:4,name:"นภา ชัยดี",   role:"Engineer",   abbr:"นภ",skills:["Electrical","PLC"]},
+  {id:5,name:"อรุณ มานะ",   role:"Technician", abbr:"อร",skills:["Mechanical","Welding"]},
 ];
 
 // plan rows: [{id, label, cells:{key:true}}]
@@ -211,21 +208,24 @@ function PlanGrid({planRows=[], onChange, readonly=false}){
     padding:0,colorScheme:"light"
   };
 
-  const MONTH_W = 30; // px ต่อ 1 สัปดาห์
-  const TABLE_MIN_W = 160+90+90+48*MONTH_W+140+(readonly?0:32);
+  const MONTH_W = 28;
+  const DATE_W  = 86;
+  const NOTE_W  = 130;
+  const DEL_W   = readonly ? 0 : 30;
+  // ไม่กำหนด minWidth ของ label col ให้ auto ขยายตาม content
 
   return (
     <div style={{width:"100%",maxWidth:"100%",overflowX:"auto",overflowY:"hidden",WebkitOverflowScrolling:"touch"}}>
-      <table style={{borderCollapse:"collapse",fontSize:11,width:TABLE_MIN_W,minWidth:TABLE_MIN_W,tableLayout:"fixed"}}>
+      <table style={{borderCollapse:"collapse",fontSize:11,tableLayout:"auto",width:"100%"}}>
         <colgroup>
-          <col style={{width:160}}/>
-          <col style={{width:90}}/>
-          <col style={{width:90}}/>
+          <col/>{/* label — auto */}
+          <col style={{width:DATE_W}}/>
+          <col style={{width:DATE_W}}/>
           {MONTHS_EN.map((_,mi)=>[1,2,3,4].map(w=>(
             <col key={`col-${mi}-${w}`} style={{width:MONTH_W}}/>
           )))}
-          <col style={{width:140}}/>
-          {!readonly&&<col style={{width:32}}/>}
+          <col style={{width:NOTE_W}}/>
+          {!readonly&&<col style={{width:DEL_W}}/>}
         </colgroup>
         <thead>
           {/* Year + group header for date columns */}
@@ -556,8 +556,6 @@ export default function App(){
         ))}
 
         <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
-          <Btn variant="ai" onClick={aiSummary} style={{fontSize:11,padding:"5px 12px"}}>⬡ AI สรุป</Btn>
-          <Btn variant="ai" onClick={aiReport}  style={{fontSize:11,padding:"5px 12px"}}>⬡ รายงาน</Btn>
           <Btn variant="ghost" onClick={exportCSV} style={{fontSize:11,padding:"5px 12px",background:"rgba(255,255,255,.15)",color:"#fff",border:"1px solid rgba(255,255,255,.3)"}}>↓ Export</Btn>
           <button onClick={()=>setShowNew(true)} style={{background:"#fff",color:C.accent,border:"none",padding:"7px 16px",borderRadius:7,fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"monospace"}}>+ NEW ISSUE</button>
           <div style={{position:"relative"}}>
@@ -1006,71 +1004,152 @@ function Detail({issue,members,onUpdate,onDelete,onBack,callAI}){
     onUpdate({...issue,acts:(issue.acts||[]).filter(a=>a.id!==actId)});
   };
 
+  const [planTitle,setPlanTitle]=useState(issue.planTitle||`PLAN ${CUR_YEAR}`);
+  const [editingTitle,setEditingTitle]=useState(false);
+  const savePlanTitle=(val)=>{
+    const t=val.trim()||`PLAN ${CUR_YEAR}`;
+    setPlanTitle(t);
+    onUpdate({...issue,planTitle:t});
+    setEditingTitle(false);
+  };
+
   return (
     <div style={{width:"100%"}}>
+      {/* Top bar */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
         <button onClick={onBack} style={{background:"none",border:`1px solid ${C.line}`,color:C.textSec,padding:"6px 14px",fontSize:11,fontFamily:"monospace",cursor:"pointer",borderRadius:6}}>← กลับ</button>
         <Btn variant="danger" onClick={()=>setConfirmDel(true)} style={{fontSize:11}}>🗑 ลบ Issue</Btn>
       </div>
 
-      <div className="detail-grid" style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 290px",gap:16}}>
-        {/* Left */}
-        <div style={{display:"flex",flexDirection:"column",gap:12,minWidth:0}}>
+      {/* Header panel */}
+      <Panel style={{marginBottom:12}}>
+        <div style={{padding:20}}>
+          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,marginBottom:10}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}>
+                <span style={{fontFamily:"monospace",fontSize:11,color:C.textMuted}}>#{issue.id}</span>
+                <TypeChip type={issue.type}/><PriChip pri={issue.pri}/>
+              </div>
+              <h2 style={{fontSize:17,fontWeight:700,color:C.textPrimary,lineHeight:1.3,margin:0}}>{issue.title}</h2>
+            </div>
+            <StatusChip status={issue.status}/>
+          </div>
+          <p style={{fontSize:13,color:C.textSec,lineHeight:1.75,margin:0}}>{issue.desc}</p>
+          {issue.img&&<img src={issue.img} alt="" style={{marginTop:12,maxHeight:200,borderRadius:8,border:`1px solid ${C.line}`}}/>}
+        </div>
+      </Panel>
 
-          {/* Header */}
-          <Panel>
-            <div style={{padding:20}}>
-              <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,marginBottom:12}}>
-                <div>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}>
-                    <span style={{fontFamily:"monospace",fontSize:11,color:C.textMuted}}>#{issue.id}</span>
-                    <TypeChip type={issue.type}/><PriChip pri={issue.pri}/>
+      {/* Info row — 3 panels แนวนอน */}
+      <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr)",gap:12,marginBottom:12}}>
+        {/* ISSUE INFO */}
+        <Panel>
+          <SHdr label="ISSUE INFO"/>
+          <div style={{padding:10}}>
+            {[["ID",`#${issue.id}`],["START",fmt(issue.s)],["DUE",fmt(issue.due)],["TYPE",issue.type],["PRIORITY",issue.pri]].map(([k,v])=>(
+              <div key={k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${C.line2}`,fontSize:11}}>
+                <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:"0.1em",color:C.textMuted}}>{k}</span>
+                <span style={{color:C.textPrimary,fontWeight:600,textAlign:"right"}}>{v}</span>
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        {/* ASSIGNED TO */}
+        <Panel>
+          <SHdr label="ASSIGNED TO"/>
+          <div style={{padding:14}}>
+            {m?(
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <Avt m={m} size={36}/>
+                <div style={{minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:700,color:C.textPrimary,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{m.name}</div>
+                  <div style={{fontSize:10,color:C.textMuted,marginTop:2}}>{m.role}</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:6}}>
+                    {m.skills.map(s=>(
+                      <span key={s} style={{fontSize:9,background:C.line2,color:C.accent,padding:"2px 6px",borderRadius:3,fontFamily:"monospace"}}>{s}</span>
+                    ))}
                   </div>
-                  <h2 style={{fontSize:17,fontWeight:700,color:C.textPrimary,lineHeight:1.3}}>{issue.title}</h2>
                 </div>
-                <StatusChip status={issue.status}/>
               </div>
-              <p style={{fontSize:13,color:C.textSec,lineHeight:1.75}}>{issue.desc}</p>
-              {issue.img&&<img src={issue.img} alt="" style={{marginTop:12,maxHeight:200,borderRadius:8,border:`1px solid ${C.line}`}}/>}
-            </div>
-          </Panel>
+            ):<div style={{color:C.textMuted,fontSize:11,padding:4}}>ยังไม่ได้มอบหมาย</div>}
+          </div>
+        </Panel>
 
-          {/* Progress */}
-          <Panel>
-            <SHdr label="PROGRESS"/>
-            <div style={{padding:16,display:"flex",alignItems:"center",gap:16}}>
-              <div style={{flex:1}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:6}}>
-                  <span style={{color:C.textMuted}}>COMPLETION</span>
-                  <span style={{color:issue.pct===100?C.green:C.accent,fontWeight:800,fontFamily:"monospace"}}>{issue.pct}%</span>
-                </div>
-                <Bar pct={issue.pct} h={10}/>
-              </div>
-              <Inp type="number" min={0} max={100} value={issue.pct}
-                onChange={e=>onUpdate({...issue,pct:Math.min(100,Math.max(0,Number(e.target.value)))})}
-                style={{width:64,textAlign:"center",fontFamily:"monospace",fontWeight:800,fontSize:14}}/>
-              <span style={{fontSize:11,color:C.textMuted}}>%</span>
-            </div>
-          </Panel>
+        {/* CHANGE STATUS */}
+        <Panel>
+          <SHdr label="CHANGE STATUS" sub="คลิกเพื่อเปลี่ยน"/>
+          <div style={{padding:10,display:"flex",flexDirection:"column",gap:5}}>
+            {ALL_STATUSES.map(s=>{
+              const cfg=STATUS_CFG[s];
+              const active=issue.status===s;
+              return (
+                <button key={s}
+                  onClick={()=>{
+                    if(active) return;
+                    const newAct={id:Date.now(),kind:"status",txt:`เปลี่ยนสถานะ → ${s}`,date:new Date().toISOString().split("T")[0],by:"ผู้ใช้"};
+                    onUpdate({...issue,status:s,acts:[...(issue.acts||[]),newAct]});
+                  }}
+                  style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:7,cursor:active?"default":"pointer",background:active?cfg.bg:"transparent",border:`1px solid ${active?cfg.border:C.line2}`,color:active?cfg.color:C.textSec,fontWeight:active?700:400,fontSize:11,fontFamily:"inherit",textAlign:"left",transition:"all .15s"}}>
+                  <span style={{width:7,height:7,borderRadius:"50%",background:active?cfg.color:C.line,display:"inline-block",flexShrink:0}}/>
+                  {s}
+                  {active&&<span style={{marginLeft:"auto",fontSize:9,fontFamily:"monospace",color:cfg.color,letterSpacing:"0.06em"}}>✓ CURRENT</span>}
+                </button>
+              );
+            })}
+          </div>
+        </Panel>
+      </div>
 
-          {/* Plan Grid */}
-          <Panel style={{minWidth:0,maxWidth:"100%"}}>
-            <SHdr label={`PLAN ${CUR_YEAR}`} sub="คลิกช่องเพื่อวางแผน · แก้ไขรายละเอียดได้โดยตรง · + เพิ่มรายละเอียดแถวใหม่"/>
-            <div style={{padding:14,maxWidth:"100%",overflow:"hidden"}}>
-              <PlanGrid
-                planRows={issue.planRows||[]}
-                onChange={rows=>onUpdate({...issue,planRows:rows})}
-              />
+      {/* PROGRESS */}
+      <Panel style={{marginBottom:12}}>
+        <SHdr label="PROGRESS"/>
+        <div style={{padding:14,display:"flex",alignItems:"center",gap:16}}>
+          <div style={{flex:1}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:11,marginBottom:6}}>
+              <span style={{color:C.textMuted}}>COMPLETION</span>
+              <span style={{color:issue.pct===100?C.green:C.accent,fontWeight:800,fontFamily:"monospace"}}>{issue.pct}%</span>
             </div>
-          </Panel>
+            <Bar pct={issue.pct} h={10}/>
+          </div>
+          <Inp type="number" min={0} max={100} value={issue.pct}
+            onChange={e=>onUpdate({...issue,pct:Math.min(100,Math.max(0,Number(e.target.value)))})}
+            style={{width:64,textAlign:"center",fontFamily:"monospace",fontWeight:800,fontSize:14}}/>
+          <span style={{fontSize:11,color:C.textMuted}}>%</span>
+        </div>
+      </Panel>
 
-          {/* Activity Log */}
-          <Panel>
-            <SHdr label="ACTIVITY LOG" sub="แก้ไขหรือลบรายการได้"/>
-            <div style={{padding:16}}>
-              {(issue.acts||[]).length===0
-                ?<div style={{textAlign:"center",color:C.textMuted,fontSize:11,padding:16,fontStyle:"italic"}}>— ยังไม่มีกิจกรรม —</div>
-                :(issue.acts||[]).map(a=>(
+      {/* PLAN — full width, editable title, auto-fit columns */}
+      <Panel style={{marginBottom:12}}>
+        <div style={{display:"flex",alignItems:"center",padding:"10px 16px",background:C.line2,borderBottom:`1px solid ${C.line}`,borderRadius:"10px 10px 0 0",gap:8}}>
+          {editingTitle?(
+            <input autoFocus defaultValue={planTitle}
+              onBlur={e=>savePlanTitle(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter")savePlanTitle(e.target.value);if(e.key==="Escape"){setEditingTitle(false);}}}
+              style={{flex:1,fontSize:13,fontWeight:700,border:`1px solid ${C.accent}`,borderRadius:5,padding:"2px 8px",fontFamily:"inherit",color:C.textPrimary,outline:"none"}}/>
+          ):(
+            <div style={{flex:1,display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:13,fontWeight:700,color:C.textPrimary}}>{planTitle}</span>
+              <button onClick={()=>setEditingTitle(true)}
+                style={{background:"none",border:`1px solid ${C.line}`,borderRadius:4,padding:"1px 7px",fontSize:10,color:C.textMuted,cursor:"pointer"}}>✏️ แก้ชื่อ</button>
+            </div>
+          )}
+          <span style={{fontSize:10,color:C.textMuted}}>คลิกช่องเพื่อวางแผน · แก้ไขรายละเอียดได้โดยตรง · + เพิ่มรายละเอียดแถวใหม่</span>
+        </div>
+        <div style={{padding:14,width:"100%",boxSizing:"border-box"}}>
+          <PlanGrid
+            planRows={issue.planRows||[]}
+            onChange={rows=>onUpdate({...issue,planRows:rows})}
+          />
+        </div>
+      </Panel>
+
+      {/* ACTIVITY LOG */}
+      <Panel>
+        <SHdr label="ACTIVITY LOG" sub="แก้ไขหรือลบรายการได้"/>
+        <div style={{padding:16}}>
+          {(issue.acts||[]).length===0
+            ?<div style={{textAlign:"center",color:C.textMuted,fontSize:11,padding:16,fontStyle:"italic"}}>— ยังไม่มีกิจกรรม —</div>
+            :(issue.acts||[]).map(a=>(
                   <div key={a.id} style={{display:"flex",gap:10,marginBottom:12,alignItems:"flex-start"}}>
                     <div style={{width:28,height:28,background:C.line2,border:`1px solid ${C.line}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:C.textMuted,flexShrink:0,borderRadius:6}}>
                       {a.kind==="status"?"🔄":a.kind==="comment"?"💬":"📎"}
@@ -1100,67 +1179,6 @@ function Detail({issue,members,onUpdate,onDelete,onBack,callAI}){
               </div>
             </div>
           </Panel>
-        </div>
-
-        {/* Right sidebar */}
-        <div style={{display:"flex",flexDirection:"column",gap:12,minWidth:0}}>
-          <Panel>
-            <SHdr label="ISSUE INFO"/>
-            <div style={{padding:12}}>
-              {[["ID",`#${issue.id}`],["START",fmt(issue.s)],["DUE",fmt(issue.due)],["TYPE",issue.type],["PRIORITY",issue.pri]].map(([k,v])=>(
-                <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:`1px solid ${C.line2}`,fontSize:11}}>
-                  <span style={{fontFamily:"monospace",fontSize:9,letterSpacing:"0.1em",color:C.textMuted}}>{k}</span>
-                  <span style={{color:C.textPrimary,fontWeight:600}}>{v}</span>
-                </div>
-              ))}
-            </div>
-          </Panel>
-
-          <Panel>
-            <SHdr label="ASSIGNED TO"/>
-            <div style={{padding:14}}>
-              {m?(
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <Avt m={m} size={36}/>
-                  <div>
-                    <div style={{fontSize:14,fontWeight:700,color:C.textPrimary}}>{m.name}</div>
-                    <div style={{fontSize:10,color:C.textMuted,marginTop:2}}>{m.role}</div>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:6}}>
-                      {m.skills.map(s=>(
-                        <span key={s} style={{fontSize:9,background:C.line2,color:C.accent,padding:"2px 6px",borderRadius:3,fontFamily:"monospace"}}>{s}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ):<div style={{color:C.textMuted,fontSize:11,padding:4}}>ยังไม่ได้มอบหมาย</div>}
-            </div>
-          </Panel>
-
-          {/* Change Status — แก้ไข/ลบประวัติได้ */}
-          <Panel>
-            <SHdr label="CHANGE STATUS" sub="คลิกเพื่อเปลี่ยน · ประวัติแก้ไข/ลบได้"/>
-            <div style={{padding:12,display:"flex",flexDirection:"column",gap:6}}>
-              {ALL_STATUSES.map(s=>{
-                const cfg=STATUS_CFG[s];
-                const active=issue.status===s;
-                return (
-                  <button key={s}
-                    onClick={()=>{
-                      if(active) return;
-                      const newAct={id:Date.now(),kind:"status",txt:`เปลี่ยนสถานะ → ${s}`,date:new Date().toISOString().split("T")[0],by:"ผู้ใช้"};
-                      onUpdate({...issue,status:s,acts:[...(issue.acts||[]),newAct]});
-                    }}
-                    style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",borderRadius:7,cursor:active?"default":"pointer",background:active?cfg.bg:"transparent",border:`1px solid ${active?cfg.border:C.line2}`,color:active?cfg.color:C.textSec,fontWeight:active?700:400,fontSize:12,fontFamily:"inherit",textAlign:"left",transition:"all .15s"}}>
-                    <span style={{width:8,height:8,borderRadius:"50%",background:active?cfg.color:C.line,display:"inline-block",flexShrink:0}}/>
-                    {s}
-                    {active&&<span style={{marginLeft:"auto",fontSize:9,fontFamily:"monospace",color:cfg.color,letterSpacing:"0.06em"}}>✓ CURRENT</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </Panel>
-        </div>
-      </div>
 
       {confirmDel&&(
         <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200}}>
